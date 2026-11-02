@@ -25,6 +25,7 @@
 #include <mgba-util/platform/3ds/3ds-vfs.h>
 #include <mgba-util/threading.h>
 #include "ctr-gpu.h"
+#include "dock.h"
 
 #include <3ds.h>
 #include <3ds/gpu/gx.h>
@@ -318,6 +319,7 @@ static void _setup(struct mGUIRunner* runner) {
 }
 
 static void _gameLoaded(struct mGUIRunner* runner) {
+	dockLoadConfig(DOCK_CONFIG_PATH);
 	switch (runner->core->platform(runner->core)) {
 #ifdef M_CORE_GBA
 		// TODO: Move these to callbacks
@@ -614,6 +616,13 @@ static void _drawFrame(struct mGUIRunner* runner, bool faded) {
 	}
 
 	_drawTex(runner->core, faded, interframeBlending);
+
+	// Monomyth dock: only when the game is on the top screen.
+	if (screenMode >= SM_PA_TOP) {
+		C3D_FrameDrawOn(bottomScreen);
+		ctrSetViewportSize(320, 240, true);
+		dockDraw();
+	}
 }
 
 static void _drawScreenshot(struct mGUIRunner* runner, const mColor* pixels, unsigned width, unsigned height, bool faded) {
@@ -646,6 +655,7 @@ static uint16_t _pollGameInput(struct mGUIRunner* runner) {
 	uint32_t activeKeys = hidKeysHeld();
 	uint16_t keys = mInputMapKeyBits(&runner->core->inputMap, _3DS_INPUT, activeKeys, 0);
 	keys |= (activeKeys >> 24) & 0xF0;
+	keys |= dockUpdate(runner->core, activeKeys, hidKeysDown(), screenMode >= SM_PA_TOP);
 	return keys;
 }
 
@@ -918,6 +928,7 @@ int main(int argc, char* argv[]) {
 		_cleanup();
 		return 1;
 	}
+	dockInit(font);
 	outputBuffer = linearMemAlign(256 * 224 * sizeof(mColor), 0x80);
 
 	struct mGUIRunner runner = {
@@ -1111,6 +1122,7 @@ int main(int argc, char* argv[]) {
 	if (useRomfs) {
 		romfsExit();
 	}
+	dockDeinit();
 	GUIFontDestroy(font);
 	_cleanup();
 	return 0;

@@ -184,7 +184,6 @@ static void _cleanup(void) {
 		ndspExit();
 	}
 
-	camExit();
 	ndspExit();
 	ptmuExit();
 	mcuHwcExit();
@@ -724,6 +723,9 @@ static int32_t _readGyroZ(struct mRotationSource* source) {
 static void _startRequestImage(struct mImageSource* source, unsigned w, unsigned h, int colorFormats) {
 	UNUSED(colorFormats);
 	struct m3DSImageSource* imageSource = (struct m3DSImageSource*) source;
+	if (!imageSource->cam) {
+		return; // Camera disabled for Monomyth 3DS.
+	}
 
 	_resetCamera(imageSource);
 
@@ -752,6 +754,9 @@ static void _startRequestImage(struct mImageSource* source, unsigned w, unsigned
 
 static void _stopRequestImage(struct mImageSource* source) {
 	struct m3DSImageSource* imageSource = (struct m3DSImageSource*) source;
+	if (!imageSource->cam) {
+		return; // Camera disabled for Monomyth 3DS.
+	}
 
 	free(imageSource->buffer);
 	imageSource->buffer = NULL;
@@ -926,11 +931,12 @@ int main(int argc, char* argv[]) {
 	camera.d.requestImage = _requestImage;
 	camera.buffer = NULL;
 	camera.bufferSize = 0;
-	camera.cam = SELECT_IN1;
+	camera.cam = SELECT_NONE;
 
 	ptmuInit();
 	mcuHwcInit();
-	camInit();
+	// Monomyth: camera disabled. Starting it made Azahar open a photo picker
+	// and wait, which showed up as a black screen. GBA games here never use it.
 
 	hasSound = NO_SOUND;
 	if (!ndspInit()) {
@@ -1105,7 +1111,7 @@ int main(int argc, char* argv[]) {
 				.title = "Camera",
 				.data = GUI_V_S("camera"),
 				.submenu = 0,
-				.state = 1,
+				.state = 0,
 				.validStates = (const char*[]) {
 					"None",
 					"Inner",

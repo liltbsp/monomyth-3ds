@@ -30,6 +30,9 @@
 #include <3ds.h>
 #include <3ds/gpu/gx.h>
 
+#include <ctype.h>
+#include <dirent.h>
+
 mLOG_DECLARE_CATEGORY(GUI_3DS);
 mLOG_DEFINE_CATEGORY(GUI_3DS, "3DS", "gui.3ds");
 
@@ -836,6 +839,63 @@ THREAD_ENTRY _core2Test(void* context) {
 	UNUSED(context);
 }
 
+// Monomyth: find a .gba to launch automatically, so no file picker is needed.
+// Looks in these folders (in order) and prefers a file with "monomyth" in its name.
+static bool _isGba(const char* name) {
+	size_t len = strlen(name);
+	return len > 4 && name[len - 4] == '.' && tolower((unsigned char) name[len - 3]) == 'g' &&
+		tolower((unsigned char) name[len - 2]) == 'b' && tolower((unsigned char) name[len - 1]) == 'a';
+}
+
+static bool _hasMonomyth(const char* name) {
+	const char* key = "monomyth";
+	size_t klen = strlen(key);
+	for (; *name; ++name) {
+		size_t i;
+		for (i = 0; i < klen && name[i] && tolower((unsigned char) name[i]) == key[i]; ++i);
+		if (i == klen) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool _findAutoRom(char* out, size_t size) {
+	static const char* const dirs[] = { "/3ds/monomyth-3ds", "/roms", "/" };
+	char fallback[PATH_MAX] = { 0 };
+	size_t d;
+	for (d = 0; d < sizeof(dirs) / sizeof(dirs[0]); ++d) {
+		char sdPath[PATH_MAX];
+		snprintf(sdPath, sizeof(sdPath), "sdmc:%s", dirs[d]);
+		DIR* dir = opendir(sdPath);
+		if (!dir) {
+			continue;
+		}
+		struct dirent* ent;
+		while ((ent = readdir(dir))) {
+			if (!_isGba(ent->d_name)) {
+				continue;
+			}
+			const char* sep = dirs[d][1] ? "/" : "";
+			if (_hasMonomyth(ent->d_name)) {
+				snprintf(out, size, "%s%s%s", dirs[d], sep, ent->d_name);
+				closedir(dir);
+				return true;
+			}
+			if (!fallback[0]) {
+				snprintf(fallback, sizeof(fallback), "%s%s%s", dirs[d], sep, ent->d_name);
+			}
+		}
+		closedir(dir);
+	}
+	if (fallback[0]) {
+		strncpy(out, fallback, size - 1);
+		out[size - 1] = '\0';
+		return true;
+	}
+	return false;
+}
+
 int main(int argc, char* argv[]) {
 	char initialPath[PATH_MAX] = { 0 };
 	if (argc > 1) {
@@ -844,6 +904,10 @@ int main(int argc, char* argv[]) {
 		u8 hmac[0x20];
 		memset(hmac, 0, sizeof(hmac));
 		APT_ReceiveDeliverArg(initialPath, sizeof(initialPath), hmac, NULL, NULL);
+	}
+	if (initialPath[0] != '/') {
+		memset(initialPath, 0, sizeof(initialPath));
+		_findAutoRom(initialPath, sizeof(initialPath));
 	}
 
 	rotation.d.sample = _sampleRotation;

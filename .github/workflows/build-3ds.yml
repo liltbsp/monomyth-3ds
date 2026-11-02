@@ -19,17 +19,36 @@ jobs:
       - name: Install optional 3DS libraries
         run: dkp-pacman -S --noconfirm --needed 3ds-zlib 3ds-libpng || true
 
+      - name: Add bannertool shim (icon via devkitPro smdhtool)
+        run: |
+          mkdir -p /opt/shim
+          cat > /opt/shim/bannertool <<'SHIM'
+          #!/bin/bash
+          # Minimal stand-in: only 'makesmdh' is needed for the .3dsx build.
+          [ "$1" = "makesmdh" ] || { echo "shim: $1 not supported" >&2; exit 0; }
+          shift
+          while [ $# -gt 0 ]; do
+            case "$1" in
+              -s) S="$2"; shift 2;; -l) L="$2"; shift 2;; -p) P="$2"; shift 2;;
+              -i) I="$2"; shift 2;; -o) O="$2"; shift 2;; *) shift;;
+            esac
+          done
+          exec /opt/devkitpro/tools/bin/smdhtool --create "$S" "$L" "$P" "$I" "$O"
+          SHIM
+          chmod +x /opt/shim/bannertool
+
       - name: Build mGBA for 3DS
         run: |
+          export PATH=/opt/shim:$PATH
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=../src/platform/3ds/CMakeToolchain.txt -DCMAKE_BUILD_TYPE=Release
-          make -j"$(nproc)"
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=../src/platform/3ds/CMakeToolchain.txt -DCMAKE_BUILD_TYPE=Release -DBANNERTOOL=/opt/shim/bannertool
+          make -j"$(nproc)" mgba.3dsx
 
       - name: Collect build output
         run: |
           mkdir -p out/3ds/monomyth-3ds
-          cp build/*.3dsx build/*.smdh out/3ds/monomyth-3ds/ 2>/dev/null || cp build/*.3dsx out/3ds/monomyth-3ds/
+          find build -name '*.3dsx' -exec cp {} out/3ds/monomyth-3ds/ \;
           ls -la out/3ds/monomyth-3ds
 
       - uses: actions/upload-artifact@v4

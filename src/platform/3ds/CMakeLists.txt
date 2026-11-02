@@ -45,6 +45,7 @@ list(APPEND GUI_SRC
 
 	${CMAKE_CURRENT_SOURCE_DIR}/gui-font.c
 	${CMAKE_CURRENT_SOURCE_DIR}/ctr-gpu.c
+	${CMAKE_CURRENT_SOURCE_DIR}/dock.c
 	${CMAKE_CURRENT_SOURCE_DIR}/ctr-gpu.h)
 
 set_source_files_properties(

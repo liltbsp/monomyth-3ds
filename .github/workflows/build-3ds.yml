@@ -1,0 +1,38 @@
+name: Build 3DS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Allow git in container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install optional 3DS libraries
+        run: dkp-pacman -S --noconfirm --needed 3ds-zlib 3ds-libpng || true
+
+      - name: Build mGBA for 3DS
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=../src/platform/3ds/CMakeToolchain.txt -DCMAKE_BUILD_TYPE=Release
+          make -j"$(nproc)"
+
+      - name: Collect build output
+        run: |
+          mkdir -p out/3ds/monomyth-3ds
+          cp build/*.3dsx build/*.smdh out/3ds/monomyth-3ds/ 2>/dev/null || cp build/*.3dsx out/3ds/monomyth-3ds/
+          ls -la out/3ds/monomyth-3ds
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monomyth-3ds
+          path: out/

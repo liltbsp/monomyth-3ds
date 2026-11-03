@@ -964,6 +964,7 @@ int main(int argc, char* argv[]) {
 	// Monomyth: 800px wide mode disabled. Azahar showed the top screen cut off
 	// on the right with it on.
 	UNUSED(model);
+	gfxSetWide(false);
 	cfguExit();
 
 	if (!_initGpu()) {

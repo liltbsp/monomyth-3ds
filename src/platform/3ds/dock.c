@@ -22,6 +22,16 @@
 #include "dock.h"
 #include "ctr-gpu.h"
 
+/* Build number, written by the GitHub workflow so you can tell builds apart. */
+#if defined(__has_include)
+#if __has_include("build-stamp.h")
+#include "build-stamp.h"
+#endif
+#endif
+#ifndef MONOMYTH_BUILD
+#define MONOMYTH_BUILD "dev"
+#endif
+
 #include <mgba/core/core.h>
 #include <mgba-util/gui/font.h>
 
@@ -418,6 +428,7 @@ void dockDraw(void) {
 
 	unsigned fh = GUIFontHeight(dockFont);
 	GUIFontPrint(dockFont, 160, (24 + fh) / 2 - 1, GUI_ALIGN_HCENTER, COL_TEXT, "MONOMYTH DOCK");
+	GUIFontPrint(dockFont, 4, (24 + fh) / 2 - 1, GUI_ALIGN_LEFT, COL_DIM, "build " MONOMYTH_BUILD);
 	for (i = 0; i < DOCK_BUTTONS; ++i) {
 		const struct DockButton* b = &buttons[i];
 		if (!b->nTokens) {

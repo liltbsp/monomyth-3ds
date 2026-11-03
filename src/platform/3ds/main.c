@@ -200,7 +200,16 @@ static void _drawStart(void) {
 	frameStarted = true;
 
 	int screen = screenMode >= SM_PA_TOP ? GSP_SCREEN_TOP : GSP_SCREEN_BOTTOM;
-	if (frameLimiter) {
+	// Monomyth dock speed: 1 = normal, 2-4 = only wait for every Nth frame, 0 = no limit.
+	bool limit = frameLimiter;
+	int dockSpeedSetting = dockSpeed();
+	if (limit && dockSpeedSetting != 1) {
+		static unsigned speedCounter = 0;
+		if (dockSpeedSetting == 0 || (++speedCounter % dockSpeedSetting) != 0) {
+			limit = false;
+		}
+	}
+	if (limit) {
 		u32 oldFrame = frameCounter;
 		frameCounter = C3D_FrameCounter(screen);
 		while (oldFrame == frameCounter) {
@@ -657,6 +666,15 @@ static uint16_t _pollGameInput(struct mGUIRunner* runner) {
 	uint32_t activeKeys = hidKeysHeld();
 	uint16_t keys = mInputMapKeyBits(&runner->core->inputMap, _3DS_INPUT, activeKeys, 0);
 	keys |= (activeKeys >> 24) & 0xF0;
+	// Monomyth dock: keep its SCREEN row in sync, and apply size changes from it.
+	if (screenMode >= SM_PA_TOP) {
+		dockSetScreenIndex(screenMode - SM_PA_TOP);
+	}
+	int screenRequest = dockTakeScreenRequest();
+	if (screenRequest >= 0) {
+		screenMode = SM_PA_TOP + screenRequest;
+		mCoreConfigSetUIntValue(&runner->config, "screenMode", screenMode);
+	}
 	keys |= dockUpdate(runner->core, activeKeys, hidKeysDown(), screenMode >= SM_PA_TOP);
 	return keys;
 }

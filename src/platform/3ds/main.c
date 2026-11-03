@@ -66,7 +66,7 @@ static enum DarkenMode {
 
 #define AUDIO_SAMPLES 1280
 #define AUDIO_SAMPLE_BUFFER (AUDIO_SAMPLES * 16)
-#define DSP_BUFFERS 4
+#define DSP_BUFFERS 8 // Monomyth: more buffering for smoother audio under emulation (must be a power of 2)
 
 static struct m3DSRotationSource {
 	struct mRotationSource d;
@@ -945,7 +945,7 @@ int main(int argc, char* argv[]) {
 		ndspSetOutputCount(1);
 		ndspChnReset(0);
 		ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-		ndspChnSetInterp(0, NDSP_INTERP_NONE);
+		ndspChnSetInterp(0, NDSP_INTERP_LINEAR); // Monomyth: smoother resampling
 		ndspChnWaveBufClear(0);
 		audioLeft = linearMemAlign(AUDIO_SAMPLES * DSP_BUFFERS * 2 * sizeof(int16_t), 0x80);
 		memset(dspBuffer, 0, sizeof(dspBuffer));
@@ -961,9 +961,9 @@ int main(int argc, char* argv[]) {
 	u8 model = 0;
 	cfguInit();
 	CFGU_GetSystemModel(&model);
-	if (model != CFG_MODEL_2DS) {
-		gfxSetWide(true);
-	}
+	// Monomyth: 800px wide mode disabled. Azahar showed the top screen cut off
+	// on the right with it on.
+	UNUSED(model);
 	cfguExit();
 
 	if (!_initGpu()) {

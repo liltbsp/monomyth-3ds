@@ -37,6 +37,11 @@ jobs:
           SHIM
           chmod +x /opt/shim/bannertool
 
+      - name: Stamp build number
+        run: |
+          echo "#define MONOMYTH_BUILD \"${GITHUB_RUN_NUMBER}\"" > src/platform/3ds/build-stamp.h
+          cat src/platform/3ds/build-stamp.h
+
       - name: Build mGBA for 3DS
         run: |
           export PATH=/opt/shim:$PATH
@@ -49,6 +54,7 @@ jobs:
         run: |
           mkdir -p out/3ds/monomyth-3ds
           find build -name '*.3dsx' -exec cp {} out/3ds/monomyth-3ds/ \;
+          echo "Monomyth 3DS build ${GITHUB_RUN_NUMBER}" > out/3ds/monomyth-3ds/BUILD.txt
           ls -la out/3ds/monomyth-3ds
 
       - uses: actions/upload-artifact@v4

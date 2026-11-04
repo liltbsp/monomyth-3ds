@@ -115,13 +115,17 @@ static const char* const tabNames[TAB_MAX] = { "TOOLS", "BUTTONS" };
 static struct Rect tabRects[TAB_MAX];
 static enum Tab activeTab = TAB_TOOLS;
 
-enum Row { ROW_SPEED, ROW_SLOT, ROW_SAVE, ROW_LOAD, ROW_SCREEN, ROW_SHOT, ROW_MAX };
+enum Row { ROW_SPEED, ROW_FRAMESKIP, ROW_SLOT, ROW_SAVE, ROW_LOAD, ROW_SCREEN, ROW_SHOT, ROW_MAX };
 static struct Rect rowRects[ROW_MAX];
 
 static const char* const speedNames[] = { "1x", "2x", "3x", "4x", "MAX" };
 static const int speedValues[] = { 1, 2, 3, 4, 0 };
 #define SPEED_COUNT 5
 static int speedIndex;
+
+static const char* const frameskipNames[] = { "OFF", "1", "2", "3" };
+#define FRAMESKIP_COUNT 4
+static int frameskipIndex;
 
 static const char* const screenNames[] = { "PIXEL", "FIT", "FULL" };
 #define SCREEN_COUNT 3
@@ -261,7 +265,7 @@ static void _layout(void) {
 
 	/* TOOLS rows. */
 	for (i = 0; i < ROW_MAX; ++i) {
-		rowRects[i] = (struct Rect) { 8, (s16) (31 + i * 31), 188, 29 };
+		rowRects[i] = (struct Rect) { 8, (s16) (30 + i * 27), 188, 25 };
 	}
 
 	/* BUTTONS grid: 2 columns x 3 rows. */
@@ -485,6 +489,13 @@ static void _rowTapped(struct mCore* core, int row, int dir) {
 		snprintf(msg, sizeof(msg), "Speed %s", speedNames[speedIndex]);
 		_toast(msg);
 		break;
+	case ROW_FRAMESKIP:
+		frameskipIndex = (frameskipIndex + dir + FRAMESKIP_COUNT) % FRAMESKIP_COUNT;
+		mCoreConfigSetIntValue(&core->config, "frameskip", frameskipIndex);
+		core->reloadConfigOption(core, "frameskip", NULL);
+		snprintf(msg, sizeof(msg), "Frameskip %s", frameskipNames[frameskipIndex]);
+		_toast(msg);
+		break;
 	case ROW_SLOT:
 		stateSlot = (stateSlot - 1 + dir + SLOT_MAX) % SLOT_MAX + 1;
 		loadArmFrames = 0;
@@ -563,7 +574,17 @@ static void _handleTap(struct mCore* core, u16 px, u16 py) {
 }
 
 uint16_t dockUpdate(struct mCore* core, u32 held, u32 down, bool active) {
-	UNUSED(held);
+	/* mGBA scans input before we do, which uses up hidKeysDown()'s "just
+	 * pressed" signal for the touch screen. So detect taps ourselves:
+	 * touching now, but not on the previous frame. */
+	static bool wasTouching = false;
+	UNUSED(down);
+	bool touching = (held & KEY_TOUCH) != 0;
+	bool tapped = touching && !wasTouching;
+	wasTouching = touching;
+	if (core->opts.frameskip >= 0 && core->opts.frameskip < FRAMESKIP_COUNT) {
+		frameskipIndex = core->opts.frameskip;
+	}
 	if (litFrames > 0) {
 		--litFrames;
 	}
@@ -578,7 +599,7 @@ uint16_t dockUpdate(struct mCore* core, u32 held, u32 down, bool active) {
 		heldNow = 0;
 		return 0;
 	}
-	if (down & KEY_TOUCH) {
+	if (tapped) {
 		touchPosition pos;
 		hidTouchRead(&pos);
 		_handleTap(core, pos.px, pos.py);
@@ -691,6 +712,10 @@ void dockDraw(void) {
 			case ROW_SPEED:
 				label = "SPEED";
 				value = speedNames[speedIndex];
+				break;
+			case ROW_FRAMESKIP:
+				label = "FRAMESKIP";
+				value = frameskipNames[frameskipIndex];
 				break;
 			case ROW_SLOT:
 				label = "STATE SLOT";

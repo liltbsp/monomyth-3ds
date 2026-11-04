@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The GitHub workflow passes -PbuildNumber=<run number> so each APK shows its build.
+def buildNumber = (project.findProperty('buildNumber') ?: '0').toString().toInteger()
+
+android {
+    namespace 'io.github.liltbsp.dualdock'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.liltbsp.dualdock'
+        minSdk 26
+        targetSdk 34
+        versionCode buildNumber > 0 ? buildNumber : 1
+        versionName "0.0.${buildNumber}"
+        buildConfigField 'int', 'BUILD_NUMBER', "${buildNumber}"
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

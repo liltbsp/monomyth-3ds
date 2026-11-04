@@ -33,6 +33,9 @@ jobs:
               -i) I="$2"; shift 2;; -o) O="$2"; shift 2;; *) shift;;
             esac
           done
+          # Name shown in Azahar's game list, with the build number.
+          S="Monomyth 3DS (build ${GITHUB_RUN_NUMBER:-dev})"
+          L="mGBA with a Monomyth touch dock"
           exec /opt/devkitpro/tools/bin/smdhtool --create "$S" "$L" "$P" "$I" "$O"
           SHIM
           chmod +x /opt/shim/bannertool
@@ -53,11 +56,12 @@ jobs:
       - name: Collect build output
         run: |
           mkdir -p out/3ds/monomyth-3ds
-          find build -name '*.3dsx' -exec cp {} out/3ds/monomyth-3ds/ \;
+          # Unique file name per build, so an old copy can never be launched by mistake.
+          find build -name 'mgba.3dsx' -exec cp {} "out/3ds/monomyth-3ds/monomyth3ds-b${GITHUB_RUN_NUMBER}.3dsx" \;
           echo "Monomyth 3DS build ${GITHUB_RUN_NUMBER}" > out/3ds/monomyth-3ds/BUILD.txt
           ls -la out/3ds/monomyth-3ds
 
       - uses: actions/upload-artifact@v4
         with:
-          name: monomyth-3ds
+          name: monomyth-3ds-b${{ github.run_number }}
           path: out/

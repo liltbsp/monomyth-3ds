@@ -228,7 +228,8 @@ void mGUIInit(struct mGUIRunner* runner, const char* port) {
 	// TODO: Do we need to load more defaults?
 	mCoreConfigSetDefaultIntValue(&runner->config, "volume", 0x100);
 	mCoreConfigSetDefaultValue(&runner->config, "idleOptimization", "detect");
-	mCoreConfigSetDefaultIntValue(&runner->config, "autoload", true);
+	// Monomyth 3DS: don't jump back into the last auto-snapshot on startup.
+	mCoreConfigSetDefaultIntValue(&runner->config, "autoload", false);
 #ifdef DISABLE_THREADING
 	mCoreConfigSetDefaultIntValue(&runner->config, "autosave", false);
 #else
